@@ -17,50 +17,50 @@ export function SourceBadge({ source, size = "md", showTrust = true, className }
         return {
           label: "Alterdata ERP",
           icon: Database,
-          bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-          trust: "100% Auto",
+          bg: "bg-emerald-50 text-emerald-800 border-emerald-200",
+          trust: "Oficial",
         };
       case "banco_itau":
         return {
           label: "Itaú Open Finance",
           icon: Building2,
-          bg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-          trust: "100% Auto",
+          bg: "bg-blue-50 text-blue-800 border-blue-200",
+          trust: "D-0",
         };
       case "stone_card":
         return {
           label: "Stone Adquirente",
           icon: CreditCard,
-          bg: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
-          trust: "100% Auto",
+          bg: "bg-teal-50 text-teal-800 border-teal-200",
+          trust: "MDR Auto",
         };
       case "sefaz_nfe":
         return {
-          label: "SEFAZ / Fiscal DF-e",
+          label: "SEFAZ / DF-e",
           icon: FileCheck,
-          bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-          trust: "100% Oficial",
+          bg: "bg-amber-50 text-amber-900 border-amber-200",
+          trust: "Fiscal",
         };
       case "ponto_secullum":
         return {
           label: "Ponto Digital",
           icon: Clock,
-          bg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-          trust: "100% Auto",
+          bg: "bg-purple-50 text-purple-900 border-purple-200",
+          trust: "Folha",
         };
       case "upload_ofx":
         return {
           label: "Upload OFX",
           icon: UploadCloud,
-          bg: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
-          trust: "Importado",
+          bg: "bg-slate-100 text-slate-800 border-slate-300",
+          trust: "Arquivo",
         };
       default:
         return {
           label: "Entrada Manual",
           icon: User,
-          bg: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-          trust: "Manual (Atenção)",
+          bg: "bg-rose-50 text-rose-800 border-rose-200",
+          trust: "Revisar",
         };
     }
   };
@@ -71,17 +71,17 @@ export function SourceBadge({ source, size = "md", showTrust = true, className }
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 font-medium rounded-full border transition-all",
+        "inline-flex items-center gap-1.5 font-semibold rounded-md border transition-all",
         config.bg,
-        size === "sm" ? "px-2 py-0.5 text-xs" : "px-2.5 py-1 text-xs",
+        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
         className
       )}
-      title={`Origem da informação: ${config.label}`}
+      title={`Origem auditada: ${config.label}`}
     >
-      <Icon className={size === "sm" ? "w-3 h-3" : "w-3.5 h-3.5"} />
+      <Icon className={size === "sm" ? "w-3 h-3 text-current opacity-80" : "w-3.5 h-3.5 text-current opacity-80"} />
       <span>{config.label}</span>
       {showTrust && (
-        <span className="opacity-75 text-[10px] pl-0.5 font-mono">({config.trust})</span>
+        <span className="opacity-70 text-[10px] font-mono uppercase">[{config.trust}]</span>
       )}
     </span>
   );

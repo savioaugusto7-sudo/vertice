@@ -17,7 +17,7 @@ export default function Home() {
 
   return (
     <VerticeProvider>
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans antialiased selection:bg-emerald-500 selection:text-slate-950">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex font-sans antialiased selection:bg-slate-900 selection:text-white">
         {/* Responsive Sidebar */}
         <Sidebar
           activeTab={activeTab}
