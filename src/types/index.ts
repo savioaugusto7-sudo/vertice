@@ -1,134 +1,277 @@
-export type SourceType =
-  | "alterdata"
-  | "banco_itau"
-  | "stone_card"
-  | "sefaz_nfe"
-  | "ponto_secullum"
-  | "upload_ofx"
-  | "manual";
+// ─── Contas ──────────────────────────────────────────────────────────────────
 
-export interface SourceMetadata {
-  source: SourceType;
-  sourceName: string;
-  sourceId: string;
-  syncBatchId: string;
-  syncTimestamp: string;
-  trustScore: number; // 0.0 to 1.0 (1.0 = 100% automated reliable source)
-  rawPayload?: Record<string, unknown>;
-}
+export type AccountType =
+  | "corrente"
+  | "poupanca"
+  | "cartao_credito"
+  | "investimento"
+  | "dinheiro"
+  | "outro";
 
-export interface ConnectorLog {
+export type AccountStatus = "ativa" | "inativa";
+
+export interface Account {
   id: string;
-  timestamp: string;
-  level: "info" | "warn" | "error" | "success";
-  message: string;
-  recordsAffected?: number;
-}
-
-export interface Connector {
-  id: string;
-  code: string;
   name: string;
-  category: "erp" | "banco" | "adquirente" | "fiscal" | "trabalhista";
-  description: string;
-  status: "connected" | "syncing" | "error" | "disconnected";
-  lastSync: string;
-  nextSync: string;
-  importedCount: number;
-  sentCount: number;
-  errorCount: number;
-  pendingCount: number;
+  bank: string;
+  type: AccountType;
+  balance: number; // Saldo atual. Para cartão de crédito: valor da fatura atual (negativo = deve)
+  limit?: number; // Para cartões de crédito
+  color: string; // Cor de identificação visual
   iconName: string;
-  endpointUrl?: string;
-  authType: string;
-  logs: ConnectorLog[];
+  status: AccountStatus;
+  lastSync?: string; // ISO timestamp
+  dueDate?: number; // Para cartão: dia de vencimento da fatura (1-31)
+  closingDate?: number; // Para cartão: dia do fechamento da fatura (1-31)
 }
 
-export interface ReconciliationChain {
+// ─── Transações ──────────────────────────────────────────────────────────────
+
+export type TransactionType = "receita" | "despesa" | "transferencia";
+
+export interface Transaction {
   id: string;
-  competence: string;
-  status: "fully_conciled" | "partially_conciled" | "divergent" | "pending";
-  date: string;
-  customerOrVendor: string;
-  description: string;
-  
-  // 4 Vias
-  alterdata?: {
-    saleId: string;
-    date: string;
-    amount: number;
-    paymentMethod: string;
-    status: string;
-  };
-  fiscal?: {
-    nfeNumber: string;
-    danfeKey: string;
-    issueDate: string;
-    amount: number;
-    status: "autorizada" | "cancelada" | "pendente";
-  };
-  card?: {
-    nsu: string;
-    acquirer: string;
-    brand: string;
-    grossAmount: number;
-    feeAmount: number;
-    netAmount: number;
-    settlementDate: string;
-  };
-  bank?: {
-    transactionId: string;
-    bankName: string;
-    entryDate: string;
-    creditedAmount: number;
-    account: string;
-    conciled: boolean;
-  };
-  
-  divergenceReason?: string;
+  accountId: string;
+  date: string; // ISO date string
+  description: string; // Descrição original (ex: "NUBANK *IFOOD")
+  amount: number; // Positivo = receita, negativo = despesa
+  type: TransactionType;
+  categoryId: string;
+  notes?: string;
+  isPending?: boolean;
+  ofxId?: string; // ID original do arquivo OFX para deduplicação
+  isRecurring?: boolean;
+  autoRuleId?: string; // ID da regra que categorizou automaticamente
 }
 
-export interface PendingIssue {
+// ─── Categorias ───────────────────────────────────────────────────────────────
+
+export type CategoryGroup =
+  | "moradia"
+  | "alimentacao"
+  | "transporte"
+  | "saude"
+  | "lazer"
+  | "vestuario"
+  | "educacao"
+  | "financeiro"
+  | "assinaturas"
+  | "receita"
+  | "outros";
+
+export interface Category {
+  id: string;
+  name: string;
+  group: CategoryGroup;
+  color: string;
+  icon: string;
+  isIncome: boolean;
+}
+
+// ─── Orçamento ───────────────────────────────────────────────────────────────
+
+export interface Budget {
+  id: string;
+  categoryId: string;
+  monthlyLimit: number;
+  month: string; // "2026-09"
+}
+
+// ─── Dívidas ─────────────────────────────────────────────────────────────────
+
+export type DebtType =
+  | "cartao_credito"
+  | "emprestimo_pessoal"
+  | "financiamento"
+  | "cheque_especial"
+  | "consignado"
+  | "outro";
+
+export interface Debt {
+  id: string;
+  name: string;
+  creditor: string;
+  type: DebtType;
+  currentBalance: number; // Saldo devedor atual
+  originalAmount: number; // Valor original da dívida
+  interestRateMonthly: number; // Taxa de juros mensal em decimal (ex: 0.0149 = 1.49% a.m.)
+  minimumPayment: number; // Parcela mínima/atual
+  remainingInstallments: number;
+  totalInstallments: number;
+  color: string;
+  iconName: string;
+}
+
+// Resultado do cálculo de amortização mês a mês
+export interface AmortizationMonth {
+  month: number; // Número do mês (1, 2, 3...)
+  monthLabel: string; // Ex: "Out/2026"
+  totalPayment: number;
+  principalPaid: number;
+  interestPaid: number;
+  remainingBalance: number;
+  debtId: string;
+  debtName: string;
+}
+
+export interface DebtPlan {
+  strategy: "snowball" | "avalanche";
+  monthsToPayoff: number;
+  totalInterestPaid: number;
+  totalPaid: number;
+  schedule: AmortizationMonth[];
+  interestSavingsVsMinimum: number;
+  monthsSavedVsMinimum: number;
+}
+
+// ─── Investimentos ────────────────────────────────────────────────────────────
+
+export type InvestmentType =
+  | "renda_fixa"
+  | "tesouro_direto"
+  | "fii"
+  | "acao"
+  | "cdb"
+  | "lci_lca"
+  | "cripto"
+  | "previdencia"
+  | "outro";
+
+export interface Investment {
+  id: string;
+  name: string;
+  ticker?: string; // Ticker B3 (ex: "MXRF11", "VALE3")
+  type: InvestmentType;
+  broker: string;
+  quantity?: number; // Quantidade de cotas/ações
+  averagePrice?: number; // Preço médio de compra
+  currentPrice?: number; // Preço atual (alimentado via BrasilAPI)
+  investedAmount: number; // Total investido
+  currentValue: number; // Valor atual
+  incomeRate?: number; // % CDI, IPCA+X, etc. (para RF)
+  maturityDate?: string; // Data de vencimento (para RF)
+  color: string;
+  iconName: string;
+}
+
+// ─── Alertas ──────────────────────────────────────────────────────────────────
+
+export type AlertSeverity = "critico" | "atencao" | "informacao";
+export type AlertCategory =
+  | "fatura"
+  | "orcamento"
+  | "divida"
+  | "investimento"
+  | "reserva"
+  | "transacao"
+  | "dica";
+
+export interface Alert {
   id: string;
   title: string;
-  category: "bancario" | "fiscal" | "cartao" | "trabalhista" | "documental";
-  severity: "critico" | "atencao" | "sugestao";
   description: string;
+  severity: AlertSeverity;
+  category: AlertCategory;
   date: string;
-  amount?: number;
-  suggestedAction: string;
-  actionLabel: string;
-  source: SourceType;
-  status: "aberta" | "resolvida";
-  ruleToLearn?: string;
+  isDismissed: boolean;
+  actionLabel?: string;
+  actionTab?: string; // Qual aba abrir ao clicar na ação
+  relatedId?: string; // ID de conta, dívida, investimento ou transação relacionada
 }
 
-export interface ChecklistItem {
+// ─── Regras de Auto-Categorização ────────────────────────────────────────────
+
+export interface AutoRule {
   id: string;
-  title: string;
-  category: "financeiro" | "fiscal" | "cartao" | "trabalhista" | "documental";
-  status: "ok" | "warning" | "pending";
-  details: string;
-  autoVerified: boolean;
+  pattern: string; // Texto a buscar na descrição da transação (case-insensitive)
+  categoryId: string;
+  accountId?: string; // Se null, aplica a todas as contas
+  createdAt: string;
+  appliedCount: number;
 }
 
-export interface MonthlyClosing {
-  competence: string;
-  readinessPercent: number;
-  statusText: string;
-  checklist: ChecklistItem[];
-  stats: {
-    totalRevenue: number;
-    totalExpenses: number;
-    reconciledCount: number;
-    pendingCount: number;
-    documentsCount: number;
-  };
-  packages: {
-    financial: { title: string; count: number; ready: boolean; size: string };
-    fiscal: { title: string; count: number; ready: boolean; size: string };
-    labor: { title: string; count: number; ready: boolean; size: string };
-    assets: { title: string; count: number; ready: boolean; size: string };
-    documents: { title: string; count: number; ready: boolean; size: string };
-  };
+// ─── Métricas de Resumo ───────────────────────────────────────────────────────
+
+export interface MonthlySummary {
+  month: string; // "2026-09"
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+  byCategory: {
+    categoryId: string;
+    categoryName: string;
+    total: number;
+    percentage: number;
+    color: string;
+  }[];
 }
+
+// ─── Plano de Desendividamento ────────────────────────────────────────────────
+
+export interface AmortizationMonth {
+  month: number;
+  monthLabel: string;
+  totalPayment: number;
+  principalPaid: number;
+  interestPaid: number;
+  remainingBalance: number;
+  debtId: string;
+  debtName: string;
+}
+
+export interface DebtPlan {
+  strategy: "snowball" | "avalanche";
+  monthsToPayoff: number;
+  totalInterestPaid: number;
+  totalPaid: number;
+  schedule: AmortizationMonth[];
+  interestSavingsVsMinimum: number;
+  monthsSavedVsMinimum: number;
+}
+
+// ─── Indicadores e Mercado (Fase 2) ──────────────────────────────────────────
+
+export interface EconomicIndicators {
+  selic: number; // ex: 10.75
+  cdi: number; // ex: 10.65
+  ipca12m: number; // ex: 4.24
+  lastUpdated: string;
+}
+
+export interface MarketQuote {
+  ticker: string; // ex: "VALE3", "MXRF11"
+  name?: string;
+  price: number;
+  changePercent: number; // ex: +1.25 ou -0.42
+  updatedAt: string;
+}
+
+// ─── Importação de Extratos (Fase 2) ─────────────────────────────────────────
+
+export interface ImportPreviewItem {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: TransactionType;
+  categoryId: string;
+  isDuplicate: boolean;
+  selected: boolean;
+  raw?: string;
+}
+
+// ─── Simulação de Aporte Extraordinário (Fase 2) ───────────────────────────────
+
+export interface ExtraPayoffSimulation {
+  debtId: string;
+  debtName: string;
+  aporteAmount: number;
+  originalMonths: number;
+  newMonths: number;
+  monthsSaved: number;
+  originalInterest: number;
+  newInterest: number;
+  interestSaved: number;
+}
+
+

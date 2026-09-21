@@ -1,204 +1,272 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Menu,
-  Bell,
-  RefreshCw,
-  Sparkles,
-  Calendar,
-  CheckCircle2,
-} from "lucide-react";
-import { useVertice } from "@/context/VerticeContext";
-import { TabType } from "./Sidebar";
-import { cn } from "@/lib/utils";
+import { Menu, Bell, RefreshCw, ChevronLeft, ChevronRight, Plus, ShieldCheck, Database } from "lucide-react";
+import { useFinance } from "@/context/VerticeContext";
+import { cn, formatCurrency } from "@/lib/utils";
+import { TransactionModal } from "@/components/modals/TransactionModal";
+import { BackupModal } from "@/components/modals/BackupModal";
 
 interface HeaderProps {
-  activeTab: TabType;
   setIsOpenMobile: (open: boolean) => void;
-  setActiveTab: (tab: TabType) => void;
 }
 
-export function Header({ activeTab, setIsOpenMobile, setActiveTab }: HeaderProps) {
+const TAB_INFO: Record<
+  string,
+  { title: string; subtitle: string }
+> = {
+  dashboard: {
+    title: "Visão Geral & Patrimônio",
+    subtitle: "Painel executivo do seu patrimônio líquido, fluxo mensal e saúde financeira.",
+  },
+  contas: {
+    title: "Minhas Contas & Conexões",
+    subtitle: "Gerencie bancos, cartões e importações de extrato OFX/CSV.",
+  },
+  extrato: {
+    title: "Extrato Unificado",
+    subtitle: "Todas as suas transações em um só lugar, com categorização inteligente.",
+  },
+  alertas: {
+    title: "Central de Alertas",
+    subtitle: "Avisos importantes sobre faturas, orçamentos e oportunidades financeiras.",
+  },
+  dividas: {
+    title: "Plano de Desendividamento",
+    subtitle: "Motor Snowball & Avalanche: calcule o caminho mais rápido para a liberdade financeira.",
+  },
+  investimentos: {
+    title: "Carteira de Investimentos",
+    subtitle: "Acompanhe seu patrimônio investido e receba indicativos baseados no seu perfil.",
+  },
+};
+
+export function Header({ setIsOpenMobile }: HeaderProps) {
   const {
-    selectedCompetence,
-    setSelectedCompetence,
-    monthlyClosing,
-    pendingIssues,
-    isSyncingAny,
-    systemNotifications,
-    triggerSync,
-    connectors,
-  } = useVertice();
+    activeTab,
+    alerts,
+    patrimonioLiquido,
+    selectedMonth,
+    setSelectedMonth,
+    syncMarketData,
+    isMarketLoading,
+  } = useFinance();
 
   const [showNotifications, setShowNotifications] = useState(false);
-  const openIssuesCount = pendingIssues.filter((p) => p.status === "aberta").length;
+  const [showTxModal, setShowTxModal] = useState(false);
+  const [showBackupModal, setShowBackupModal] = useState(false);
 
-  const handleSyncAll = () => {
-    connectors.forEach((c) => {
-      triggerSync(c.id);
-    });
+  const activeAlerts = alerts.filter((a) => !a.isDismissed);
+  const criticalCount = activeAlerts.filter((a) => a.severity === "critico").length;
+
+  const tabInfo = TAB_INFO[activeTab] ?? TAB_INFO["dashboard"];
+
+  // Navegar entre meses
+  const navigateMonth = (direction: "prev" | "next") => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const date = new Date(year, month - 1 + (direction === "next" ? 1 : -1), 1);
+    const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    setSelectedMonth(newMonth);
   };
 
-  const getTabTitle = (tab: TabType) => {
-    switch (tab) {
-      case "cockpit":
-        return {
-          title: "Cockpit Geral & Prontidão Contábil",
-          subtitle: "Painel de controle executivo entre operação da empresa e contabilidade.",
-        };
-      case "integracoes":
-        return {
-          title: "Central de Integrações & Fontes Confiáveis",
-          subtitle: "Conectores diretos com Alterdata ERP, Bancos, Adquirentes e SEFAZ.",
-        };
-      case "conciliacao":
-        return {
-          title: "Motor de Conciliação em 4 Vias",
-          subtitle: "Conferência cruzada: Alterdata ↔ NF-e ↔ Cartão ↔ Extrato Bancário.",
-        };
-      case "pendencias":
-        return {
-          title: "Central de Pendências & Exceções",
-          subtitle: "Identificação cirúrgica do que necessita de validação humana.",
-        };
-      case "fechamento":
-        return {
-          title: "Fechamento Contábil Mensal & Pacote",
-          subtitle: "Checklist de integridade e consolidação dos 5 blocos auditáveis.",
-        };
-      case "regras":
-        return {
-          title: "Inteligência Contábil & Regras de Automação",
-          subtitle: "Redução progressiva de esforço operacional com aprendizado contínuo.",
-        };
-    }
-  };
+  const monthLabel = new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(selectedMonth + "-15"));
 
-  const currentTabInfo = getTabTitle(activeTab);
+  const isCurrentMonth =
+    selectedMonth ===
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xs border-b border-slate-200 px-4 lg:px-8 py-3.5 flex items-center justify-between shadow-2xs">
-      {/* Left: Mobile toggle + Breadcrumb / Title */}
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xs border-b border-slate-200 px-4 lg:px-8 py-3 flex items-center justify-between gap-4 shadow-2xs">
+      {/* Left: Mobile toggle + Title */}
+      <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={() => setIsOpenMobile(true)}
-          className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 lg:hidden"
-          aria-label="Abrir navegação"
+          className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 lg:hidden shrink-0"
+          aria-label="Abrir menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
-            <span>Vértice</span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+            <span className="text-violet-600 font-bold">Vértice</span>
             <span>/</span>
-            <span className="text-slate-900 font-semibold">{currentTabInfo.title.split("&")[0]}</span>
+            <span className="text-slate-700 font-semibold truncate">
+              {tabInfo.title.split("&")[0].trim()}
+            </span>
           </div>
-          <h1 className="text-base lg:text-lg font-extrabold text-slate-900 tracking-tight">
-            {currentTabInfo.title}
+          <h1 className="text-sm lg:text-base font-extrabold text-slate-900 tracking-tight truncate">
+            {tabInfo.title}
           </h1>
         </div>
       </div>
 
-      {/* Right: Competence Selector + Quick Sync + Notification */}
-      <div className="flex items-center gap-2.5 sm:gap-3.5">
-        {/* Competence Selector */}
-        <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg text-xs text-slate-700">
-          <Calendar className="w-3.5 h-3.5 text-slate-500" />
-          <span className="font-medium hidden sm:inline text-slate-500">Competência:</span>
-          <select
-            value={selectedCompetence}
-            onChange={(e) => setSelectedCompetence(e.target.value)}
-            className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer"
+      {/* Center: Month selector (only on relevant tabs) */}
+      {(activeTab === "dashboard" || activeTab === "extrato") && (
+        <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5">
+          <button
+            onClick={() => navigateMonth("prev")}
+            className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
           >
-            <option value="Agosto / 2026">Agosto / 2026</option>
-            <option value="Julho / 2026">Julho / 2026</option>
-            <option value="Junho / 2026">Junho / 2026</option>
-          </select>
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-xs font-bold text-slate-900 capitalize min-w-28 text-center">
+            {monthLabel}
+          </span>
+          <button
+            onClick={() => navigateMonth("next")}
+            disabled={isCurrentMonth}
+            className={cn(
+              "w-6 h-6 flex items-center justify-center rounded-lg transition-colors",
+              isCurrentMonth
+                ? "text-slate-300 cursor-not-allowed"
+                : "hover:bg-slate-200 text-slate-600"
+            )}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Right: Patrimônio + Alerts */}
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Patrimônio Líquido Pill */}
+        <div className="hidden lg:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+          <span className="text-xs text-slate-500 font-medium">Patrimônio Líquido</span>
+          <span
+            className={cn(
+              "text-sm font-black",
+              patrimonioLiquido >= 0 ? "text-emerald-700" : "text-rose-600"
+            )}
+          >
+            {formatCurrency(patrimonioLiquido)}
+          </span>
         </div>
 
-        {/* Readiness Badge */}
-        <button
-          onClick={() => setActiveTab("fechamento")}
-          className={cn(
-            "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all",
-            monthlyClosing.readinessPercent === 100
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-              : "bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200"
-          )}
-        >
-          {monthlyClosing.readinessPercent === 100 ? (
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-          ) : (
-            <Sparkles className="w-3.5 h-3.5 text-slate-700" />
-          )}
-          <span>{monthlyClosing.readinessPercent}% Fechamento Pronto</span>
-        </button>
-
-        {/* Sync Button */}
-        <button
-          onClick={handleSyncAll}
-          disabled={isSyncingAny}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs shadow-xs transition-all disabled:opacity-50"
-          title="Executar sincronização das 5 fontes"
-        >
-          <RefreshCw className={cn("w-3.5 h-3.5", isSyncingAny && "animate-spin")} />
-          <span className="hidden sm:inline">
-            {isSyncingAny ? "Sincronizando..." : "Sincronizar Fontes"}
-          </span>
-        </button>
-
-        {/* Notification Bell */}
+        {/* Notifications */}
         <div className="relative">
           <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-colors"
+            onClick={() => setShowNotifications((p) => !p)}
+            className={cn(
+              "relative p-2 rounded-xl border transition-all",
+              activeAlerts.length > 0
+                ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+            )}
+            aria-label="Alertas"
           >
             <Bell className="w-4 h-4" />
-            {openIssuesCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white font-black text-[10px] flex items-center justify-center">
-                {openIssuesCount}
+            {activeAlerts.length > 0 && (
+              <span
+                className={cn(
+                  "absolute -top-1 -right-1 w-4 h-4 text-xs font-black rounded-full flex items-center justify-center text-white",
+                  criticalCount > 0 ? "bg-red-500" : "bg-amber-500"
+                )}
+              >
+                {activeAlerts.length}
               </span>
             )}
           </button>
 
           {/* Notifications Dropdown */}
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-white border border-slate-200 shadow-xl p-4 z-50 animate-in fade-in slide-in-from-top-1">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <span className="font-bold text-sm text-slate-900">Histórico de Eventos</span>
-                <span className="text-[11px] text-slate-500 font-semibold">Feed em Tempo Real</span>
-              </div>
-              <div className="py-2 space-y-2 max-h-72 overflow-y-auto">
-                {systemNotifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs flex items-start gap-2.5"
-                  >
-                    <div
-                      className={cn(
-                        "w-2 h-2 rounded-full mt-1.5 shrink-0",
-                        n.type === "success"
-                          ? "bg-emerald-600"
-                          : n.type === "warn"
-                          ? "bg-amber-600"
-                          : "bg-blue-600"
-                      )}
-                    />
-                    <div className="flex-1">
-                      <p className="text-slate-800">{n.text}</p>
-                      <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">
-                        Hoje às {n.time}
-                      </span>
-                    </div>
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowNotifications(false)}
+              />
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-sm font-bold text-slate-900">
+                    Alertas Ativos ({activeAlerts.length})
+                  </p>
+                </div>
+                <ul className="divide-y divide-slate-50 max-h-72 overflow-y-auto">
+                  {activeAlerts.length === 0 ? (
+                    <li className="px-4 py-6 text-center text-sm text-slate-500">
+                      Nenhum alerta ativo 🎉
+                    </li>
+                  ) : (
+                    activeAlerts.slice(0, 5).map((alert) => (
+                      <li key={alert.id} className="px-4 py-3">
+                        <div className="flex items-start gap-2.5">
+                          <span
+                            className={cn(
+                              "w-2 h-2 rounded-full mt-1.5 shrink-0",
+                              alert.severity === "critico"
+                                ? "bg-red-500"
+                                : alert.severity === "atencao"
+                                ? "bg-amber-500"
+                                : "bg-blue-400"
+                            )}
+                          />
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">
+                              {alert.title}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                              {alert.description}
+                            </p>
+                          </div>
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
+                {activeAlerts.length > 0 && (
+                  <div className="px-4 py-3 border-t border-slate-100 bg-slate-50">
+                    <button
+                      className="text-xs font-bold text-violet-600 hover:text-violet-800 transition-colors"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      Ver todos os alertas →
+                    </button>
                   </div>
-                ))}
+                )}
               </div>
-            </div>
+            </>
           )}
         </div>
+
+        {/* Backup / Dados Button */}
+        <button
+          onClick={() => setShowBackupModal(true)}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
+          title="Backup e Gerenciamento de Dados"
+        >
+          <Database className="w-3.5 h-3.5 text-slate-600" />
+          <span>Dados</span>
+        </button>
+
+        {/* Quick Nova Transação Button */}
+        <button
+          onClick={() => setShowTxModal(true)}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm shadow-emerald-600/20 transition"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden md:inline">Nova Transação</span>
+        </button>
+
+        {/* Sync indicator */}
+        <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          <span className="text-xs font-bold text-emerald-700">Salvo Local</span>
+        </div>
       </div>
+
+      {/* Modais Globais */}
+      <TransactionModal
+        isOpen={showTxModal}
+        onClose={() => setShowTxModal(false)}
+      />
+      <BackupModal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
+      />
     </header>
   );
 }
+

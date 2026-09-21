@@ -13,13 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vértice — Camada de Informação & Integração Contábil",
+  title: "Vértice — Finanças Pessoais",
   description:
-    "Gestão e integração contínua entre a operação da empresa e a contabilidade. Conexão nativa com Alterdata, Bancos, Cartões e SEFAZ.",
+    "Controle financeiro pessoal completo: contas integradas, extrato unificado, plano de desendividamento Snowball & Avalanche e indicativos de investimento.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: "#7c3aed",
   width: "device-width",
   initialScale: 1,
 };
