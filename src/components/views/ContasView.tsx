@@ -10,6 +10,7 @@ import {
   RefreshCw, CheckCircle2, AlertCircle, X, Trash2, Globe, Sparkles
 } from "lucide-react";
 import { ImportModal } from "@/components/modals/ImportModal";
+import { PluggyConnectModal } from "@/components/modals/PluggyConnectModal";
 
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   corrente: "Conta Corrente",
@@ -43,6 +44,7 @@ export function ContasView() {
   const { accounts, addAccount, deleteAccount, addTransactions, transactions } = useFinance();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showPluggyModal, setShowPluggyModal] = useState(false);
   const [targetAccountId, setTargetAccountId] = useState<string>("");
   const [isConnectingOpenFinance, setIsConnectingOpenFinance] = useState(false);
   const [openFinanceMsg, setOpenFinanceMsg] = useState<string | null>(null);
@@ -147,7 +149,15 @@ export function ContasView() {
         )}
 
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-xs text-slate-400 font-medium">Conectar agora:</span>
+          <button
+            type="button"
+            onClick={() => setShowPluggyModal(true)}
+            className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 active:scale-95 text-xs font-bold text-white transition border border-violet-400/40 shadow-sm flex items-center gap-2"
+          >
+            <Globe className="w-4 h-4 text-emerald-300" />
+            <span>Conectar Banco Real (Pluggy Widget)</span>
+          </button>
+          <span className="text-xs text-slate-400 font-medium ml-2">Simulação Sandbox rápida:</span>
           {["Nubank", "Banco Inter", "Itaú", "Bradesco"].map((bank) => (
             <button
               key={bank}
@@ -302,6 +312,12 @@ export function ContasView() {
         targetAccountId={targetAccountId}
       />
 
+      {/* Modal: Pluggy Connect Real Widget */}
+      <PluggyConnectModal
+        isOpen={showPluggyModal}
+        onClose={() => setShowPluggyModal(false)}
+        onSuccessMessage={(msg) => setOpenFinanceMsg(msg)}
+      />
 
       {/* Modal: Nova Conta — versão simplificada */}
       {showAddModal && (
