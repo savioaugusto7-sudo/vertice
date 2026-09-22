@@ -330,8 +330,9 @@ interface FinanceContextType {
   purgeAllUserData: () => Promise<void>;
   sessionUser: { id: string; name: string; email: string; role?: string } | null;
   authMethod: string | null;
+  authChecked: boolean;
   checkSession: () => Promise<void>;
-  setSession: (user: { id: string; name: string; email: string }, method: string) => void;
+  setSession: (user: { id: string; name: string; email: string; role?: string }, method: string) => void;
   logout: () => Promise<void>;
 
   // Navegação
@@ -381,16 +382,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [isMarketLoading, setIsMarketLoading] = useState<boolean>(false);
 
   // Segurança, Criptografia e Autenticação
-  const DEFAULT_ADMIN = {
-    id: "usr_admin_1",
-    name: "Sávio Augusto",
-    email: "savio@vertice.app",
-    role: "admin",
-  };
-
   const [isEncryptedStorage] = useState<boolean>(true);
-  const [sessionUser, setSessionUser] = useState<{ id: string; name: string; email: string; role?: string } | null>(DEFAULT_ADMIN);
-  const [authMethod, setAuthMethod] = useState<string | null>("Master Admin (FIDO2)");
+  const [sessionUser, setSessionUser] = useState<{ id: string; name: string; email: string; role?: string } | null>(null);
+  const [authMethod, setAuthMethod] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState<boolean>(false);
 
   const STORAGE_KEY = "vertice_finance_data_v2";
 
@@ -401,35 +396,55 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (data.authenticated && data.user) {
-          const user = {
-            ...data.user,
-            role: data.user.role === "owner" || !data.user.role || data.user.email?.includes("savio") ? "admin" : data.user.role,
-            name: data.user.name === "Titular Vértice" || !data.user.name ? "Sávio Augusto" : data.user.name,
-          };
-          setSessionUser(user);
-          setAuthMethod(data.method || "Master Admin (FIDO2)");
+          setSessionUser(data.user);
+          setAuthMethod(data.method || "Senha Mestre (PBKDF2)");
           return;
         }
       }
     } catch {
       // offline fallback
+    } finally {
+      setAuthChecked(true);
     }
-    setSessionUser(DEFAULT_ADMIN);
+    setSessionUser(null);
+    setAuthMethod(null);
   };
 
   const setSession = (user: { id: string; name: string; email: string; role?: string }, method: string) => {
-    const role = user.role === "owner" || !user.role || user.email?.includes("savio") ? "admin" : user.role;
-    setSessionUser({ ...user, role });
+    setSessionUser(user);
     setAuthMethod(method);
+    setAuthChecked(true);
   };
 
   const logout = async () => {
     try {
       await fetch("/api/auth/session", { method: "DELETE" });
     } catch {}
-    setSessionUser(DEFAULT_ADMIN);
-    setAuthMethod("Modo Local");
+    setSessionUser(null);
+    setAuthMethod(null);
   };
+
+  // Bloqueio automático por inatividade de 15 minutos (Padrão Bancário)
+  useEffect(() => {
+    if (!sessionUser) return;
+    let timer: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        logout();
+      }, 15 * 60 * 1000);
+    };
+
+    const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"];
+    events.forEach((ev) => window.addEventListener(ev, resetTimer));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timer);
+      events.forEach((ev) => window.removeEventListener(ev, resetTimer));
+    };
+  }, [sessionUser]);
 
   // LGPD Art. 18: Direito ao Esquecimento / Eliminação Completa de Dados
   const purgeAllUserData = async () => {
@@ -1048,6 +1063,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         purgeAllUserData,
         sessionUser,
         authMethod,
+        authChecked,
         checkSession,
         setSession,
         logout,

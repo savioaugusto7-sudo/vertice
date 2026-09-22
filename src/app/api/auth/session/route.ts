@@ -8,18 +8,10 @@ export async function GET() {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
-  const defaultAdminUser = {
-    id: "usr_admin_1",
-    name: "Sávio Augusto",
-    email: "savio@vertice.app",
-    role: "admin",
-  };
-
   if (!sessionToken) {
     return NextResponse.json({
-      authenticated: true,
-      user: defaultAdminUser,
-      method: "Master Admin (FIDO2)",
+      authenticated: false,
+      user: null,
     });
   }
 
@@ -27,33 +19,23 @@ export async function GET() {
     const sessionData = JSON.parse(Buffer.from(sessionToken, "base64url").toString("utf-8"));
     if (sessionData.exp && Date.now() > sessionData.exp) {
       return NextResponse.json({
-        authenticated: true,
-        user: defaultAdminUser,
-        method: "Master Admin (FIDO2)",
+        authenticated: false,
+        user: null,
+        error: "Sessão expirada. Faça login novamente.",
       });
     }
 
     const user = sessionData.user;
-    if (user) {
-      if (user.role === "owner" || !user.role || user.email?.includes("savio")) {
-        user.role = "admin";
-      }
-      if (user.name === "Titular Vértice" || !user.name) {
-        user.name = "Sávio Augusto";
-      }
-    }
-
     return NextResponse.json({
       authenticated: true,
-      user: user || defaultAdminUser,
-      method: sessionData.method || "Passkey (FIDO2)",
+      user,
+      method: sessionData.method || "Senha Mestre (PBKDF2)",
       sessionExpiresAt: new Date(sessionData.exp).toISOString(),
     });
   } catch {
     return NextResponse.json({
-      authenticated: true,
-      user: defaultAdminUser,
-      method: "Master Admin (FIDO2)",
+      authenticated: false,
+      user: null,
     });
   }
 }

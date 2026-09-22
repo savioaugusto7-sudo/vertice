@@ -12,15 +12,19 @@ import { AlertasView } from "@/components/views/AlertasView";
 import { DesendividamentoView } from "@/components/views/DesendividamentoView";
 import { InvestimentosView } from "@/components/views/InvestimentosView";
 import { TransactionModal } from "@/components/modals/TransactionModal";
+import { LockScreen } from "@/components/auth/LockScreen";
 import { useFinance } from "@/context/VerticeContext";
 
 function AppShell() {
-  const { activeTab } = useFinance();
+  const { activeTab, sessionUser, authChecked } = useFinance();
   const [isOpenMobile, setIsOpenMobile] = useState(false);
   const [showMobileTxModal, setShowMobileTxModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex font-sans antialiased selection:bg-violet-900 selection:text-white">
+      {/* Tela de Bloqueio Obrigatória enquanto não autenticado */}
+      {authChecked && !sessionUser && <LockScreen />}
+
       <Sidebar isOpenMobile={isOpenMobile} setIsOpenMobile={setIsOpenMobile} />
 
       <div className="flex-1 flex flex-col min-w-0 lg:pl-72">
