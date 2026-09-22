@@ -1,0 +1,30 @@
+{
+  "name": "Vértice — Finanças Pessoais",
+  "short_name": "Vértice",
+  "description": "Sistema de inteligência financeira pessoal, desendividamento e Open Finance bancário.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#090d16",
+  "theme_color": "#7c3aed",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nova Transação",
+      "url": "/?action=new_tx",
+      "description": "Lançamento rápido de despesa ou receita"
+    },
+    {
+      "name": "Minhas Contas",
+      "url": "/?tab=contas",
+      "description": "Ver saldos e conexões bancárias"
+    }
+  ]
+}
