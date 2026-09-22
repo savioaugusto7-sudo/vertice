@@ -18,7 +18,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpenMobile, setIsOpenMobile }: SidebarProps) {
-  const { activeTab, setActiveTab, alerts, debts } = useFinance();
+  const { activeTab, setActiveTab, alerts, debts, sessionUser } = useFinance();
 
   const activeAlerts = alerts.filter((a) => !a.isDismissed).length;
   const criticalAlerts = alerts.filter(
@@ -157,16 +157,20 @@ export function Sidebar({ isOpenMobile, setIsOpenMobile }: SidebarProps) {
           </ul>
         </nav>
 
-        {/* Footer */}
+        {/* Footer Textual - Sem Avatar */}
         <div className="p-4 border-t border-slate-100 shrink-0">
-          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-xs font-black shrink-0">
-              U
+          <div className="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-slate-900 truncate">
+                {sessionUser ? sessionUser.name : "Sávio Augusto"}
+              </p>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold uppercase tracking-wider">
+                {sessionUser?.role === "admin" ? "Admin" : "Titular"}
+              </span>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-900 truncate">Usuário</p>
-              <p className="text-xs text-slate-500 truncate">Conta Pessoal</p>
-            </div>
+            <p className="text-[11px] text-slate-500 truncate mt-0.5">
+              {sessionUser?.email || "savio@vertice.app"}
+            </p>
           </div>
         </div>
       </aside>

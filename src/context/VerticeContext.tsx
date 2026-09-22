@@ -66,9 +66,9 @@ export const CATEGORIES: Category[] = [
   { id: "cat-outros",      name: "Outros",            group: "outros",       color: "#94a3b8", icon: "MoreHorizontal", isIncome: false },
 ];
 
-// ─── Dados Mock ───────────────────────────────────────────────────────────────
+// ─── Dados de Demonstração (Opcionais) ────────────────────────────────────────
 
-const INITIAL_ACCOUNTS: Account[] = [
+const DEMO_ACCOUNTS: Account[] = [
   {
     id: "acc-nubank-cc",
     name: "Nubank — Conta Corrente",
@@ -117,7 +117,7 @@ const INITIAL_ACCOUNTS: Account[] = [
   },
 ];
 
-const INITIAL_TRANSACTIONS: Transaction[] = [
+const DEMO_TRANSACTIONS: Transaction[] = [
   // Setembro 2026
   { id: "t-001", accountId: "acc-nubank-cc",    date: "2026-09-20", description: "PIX REC - PAGAMENTO SALARIO", amount:  6500.00, type: "receita",   categoryId: "cat-salario",     notes: "" },
   { id: "t-002", accountId: "acc-nubank-cc",    date: "2026-09-19", description: "ALUGUEL — IMOBILIARIA CENTRO", amount: -1800.00, type: "despesa",   categoryId: "cat-aluguel",     notes: "" },
@@ -156,7 +156,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
   { id: "t-033", accountId: "acc-inter-invest", date: "2026-07-01", description: "REND. TESOURO SELIC",        amount:    100.50, type: "receita",   categoryId: "cat-rend-invest", notes: "" },
 ];
 
-const INITIAL_DEBTS: Debt[] = [
+const DEMO_DEBTS: Debt[] = [
   {
     id: "debt-santander",
     name: "Financiamento Volkswagen Polo",
@@ -201,7 +201,7 @@ const INITIAL_DEBTS: Debt[] = [
   },
 ];
 
-const INITIAL_INVESTMENTS: Investment[] = [
+const DEMO_INVESTMENTS: Investment[] = [
   {
     id: "inv-tesouro",
     name: "Tesouro Selic 2029",
@@ -296,6 +296,8 @@ interface FinanceContextType {
   exportBackup: () => string;
   importBackup: (jsonContent: string) => boolean;
   resetToMock: () => void;
+  loadDemoData: () => void;
+  resetToClean: () => void;
   isLoaded: boolean;
 
   // Indicadores de Mercado (Fase 2)
@@ -354,10 +356,11 @@ export type TabType =
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
-  const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
-  const [debts, setDebts] = useState<Debt[]>(INITIAL_DEBTS);
-  const [investments, setInvestments] = useState<Investment[]>(INITIAL_INVESTMENTS);
+  // Inicialização LIMPA para entrada em produção real
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
+  const [investments, setInvestments] = useState<Investment[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [autoRules, setAutoRules] = useState<AutoRule[]>(INITIAL_AUTO_RULES);
@@ -379,8 +382,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   // Segurança, Criptografia e Autenticação
   const [isEncryptedStorage] = useState<boolean>(true);
-  const [sessionUser, setSessionUser] = useState<{ id: string; name: string; email: string; role?: string } | null>(null);
-  const [authMethod, setAuthMethod] = useState<string | null>(null);
+  const [sessionUser, setSessionUser] = useState<{ id: string; name: string; email: string; role?: string } | null>({
+    id: "usr_admin_1",
+    name: "Sávio Augusto",
+    email: "savio@vertice.app",
+    role: "admin",
+  });
+  const [authMethod, setAuthMethod] = useState<string | null>("Passkey (FIDO2)");
 
   const STORAGE_KEY = "vertice_finance_data_v1";
 
@@ -936,19 +944,26 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const resetToMock = () => {
-    setAccounts(INITIAL_ACCOUNTS);
-    setTransactions(INITIAL_TRANSACTIONS);
-    setDebts(INITIAL_DEBTS);
-    setInvestments(INITIAL_INVESTMENTS);
+  const loadDemoData = () => {
+    setAccounts(DEMO_ACCOUNTS);
+    setTransactions(DEMO_TRANSACTIONS);
+    setDebts(DEMO_DEBTS);
+    setInvestments(DEMO_INVESTMENTS);
+  };
+
+  const resetToClean = () => {
+    setAccounts([]);
+    setTransactions([]);
+    setDebts([]);
+    setInvestments([]);
     setBudgets([]);
-    setAutoRules(INITIAL_AUTO_RULES);
-    setDebtStrategy("avalanche");
-    setDebtExtraMonthly(500);
+    setAutoRules([]);
     if (typeof window !== "undefined") {
       localStorage.removeItem(STORAGE_KEY);
     }
   };
+
+  const resetToMock = loadDemoData;
 
   return (
     <FinanceContext.Provider
@@ -998,6 +1013,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         exportBackup,
         importBackup,
         resetToMock,
+        loadDemoData,
+        resetToClean,
         isLoaded,
         economicIndicators,
         marketQuotes,

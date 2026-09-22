@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Menu, Bell, RefreshCw, ChevronLeft, ChevronRight, Plus, ShieldCheck, Database, Shield, KeyRound, Lock } from "lucide-react";
+import { Menu, Bell, RefreshCw, ChevronLeft, ChevronRight, Plus, ShieldCheck, Database, Shield, KeyRound, Lock, Users } from "lucide-react";
 import { useFinance } from "@/context/VerticeContext";
 import { cn, formatCurrency } from "@/lib/utils";
 import { TransactionModal } from "@/components/modals/TransactionModal";
@@ -9,6 +9,7 @@ import { BackupModal } from "@/components/modals/BackupModal";
 import { PrivacySettingsModal } from "@/components/modals/PrivacySettingsModal";
 import { AuthModal } from "@/components/modals/AuthModal";
 import { LGPDConsentModal } from "@/components/modals/LGPDConsentModal";
+import { AdminUsersModal } from "@/components/modals/AdminUsersModal";
 
 interface HeaderProps {
   setIsOpenMobile: (open: boolean) => void;
@@ -63,6 +64,7 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -248,6 +250,18 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
           )}
         </div>
 
+        {/* Painel do Administrador (Role: admin) */}
+        {sessionUser?.role === "admin" && (
+          <button
+            onClick={() => setShowAdminModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-300 transition shadow-xs"
+            title="Painel do Administrador: Gestão de Usuários"
+          >
+            <Users className="w-3.5 h-3.5 text-amber-600" />
+            <span className="hidden md:inline">Painel Admin</span>
+          </button>
+        )}
+
         {/* Central de Privacidade & LGPD Button */}
         <button
           onClick={() => setShowPrivacyModal(true)}
@@ -266,14 +280,19 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
         >
           <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
           <span className="hidden sm:inline">
-            {sessionUser ? sessionUser.name : "Entrar com Biometria"}
+            {sessionUser ? sessionUser.name : "Sávio Augusto"}
           </span>
+          {sessionUser?.role === "admin" && (
+            <span className="text-[9px] px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded font-black tracking-wider uppercase ml-0.5">
+              Admin
+            </span>
+          )}
         </button>
 
         {/* Backup / Dados Button */}
         <button
           onClick={() => setShowBackupModal(true)}
-          className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
+          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
           title="Backup e Gerenciamento de Dados"
         >
           <Database className="w-3.5 h-3.5 text-slate-600" />
@@ -320,6 +339,10 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
         isOpen={showConsentModal}
         onAccept={() => setShowConsentModal(false)}
         onClose={() => setShowConsentModal(false)}
+      />
+      <AdminUsersModal
+        isOpen={showAdminModal}
+        onClose={() => setShowAdminModal(false)}
       />
     </header>
   );

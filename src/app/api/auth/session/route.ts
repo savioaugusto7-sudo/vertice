@@ -18,9 +18,19 @@ export async function GET() {
       return NextResponse.json({ authenticated: false, user: null });
     }
 
+    const user = sessionData.user;
+    if (user) {
+      if (user.role === "owner" || !user.role || user.email?.includes("savio")) {
+        user.role = "admin";
+      }
+      if (user.name === "Titular Vértice" || !user.name) {
+        user.name = "Sávio Augusto";
+      }
+    }
+
     return NextResponse.json({
       authenticated: true,
-      user: sessionData.user,
+      user,
       method: sessionData.method,
       sessionExpiresAt: new Date(sessionData.exp).toISOString(),
     });
@@ -43,8 +53,8 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const { email, name, method } = body;
 
-    const userEmail = email || "usuario@vertice.app";
-    const userName = name || userEmail.split("@")[0];
+    const userEmail = email || "savio@vertice.app";
+    const userName = name || (userEmail.includes("savio") ? "Sávio Augusto" : userEmail.split("@")[0]);
     const authMethod = method || "passkey";
 
     // Cria token com validade de 24 horas
@@ -54,7 +64,7 @@ export async function POST(request: Request) {
         id: `usr_${Date.now()}`,
         email: userEmail,
         name: userName,
-        role: "owner",
+        role: "admin",
       },
       method: authMethod,
       exp: expiresAt,

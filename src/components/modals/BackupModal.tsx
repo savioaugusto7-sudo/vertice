@@ -13,7 +13,8 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
   const {
     exportBackup,
     importBackup,
-    resetToMock,
+    resetToClean,
+    loadDemoData,
     accounts,
     transactions,
     debts,
@@ -51,9 +52,16 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
     reader.readAsText(file);
   };
 
-  const handleReset = () => {
-    resetToMock();
+  const handleClean = () => {
+    if (typeof resetToClean === "function") {
+      resetToClean();
+    }
     setResetConfirm(false);
+    onClose();
+  };
+
+  const handleLoadDemo = () => {
+    loadDemoData();
     onClose();
   };
 
@@ -164,15 +172,15 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
             </div>
           )}
 
-          {/* Resetar dados */}
+          {/* Limpar dados para uso real */}
           <div className="p-4 border border-rose-200 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-950/20 rounded-xl space-y-2">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-semibold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
-                  <RotateCcw className="w-4 h-4 text-rose-600" /> Restaurar Demonstração
+                  <X className="w-4 h-4 text-rose-600" /> Limpar Dados Fictícios (Uso Real)
                 </h4>
                 <p className="text-xs text-rose-700 dark:text-rose-400">
-                  Volta todos os dados para o cenário inicial educativo (Nubank, dívidas e investimentos)
+                  Zera contas, transações e dívidas para você começar a cadastrar suas finanças reais
                 </p>
               </div>
               {!resetConfirm ? (
@@ -181,7 +189,7 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                   onClick={() => setResetConfirm(true)}
                   className="px-3.5 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-white dark:bg-rose-900/60 hover:bg-rose-100 border border-rose-300 dark:border-rose-800 rounded-lg transition"
                 >
-                  Resetar
+                  Zerar Dados
                 </button>
               ) : (
                 <div className="flex items-center gap-2">
@@ -194,14 +202,33 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={handleReset}
+                    onClick={handleClean}
                     className="px-3 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition"
                   >
-                    Confirmar
+                    Confirmar Limpeza
                   </button>
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Carregar Exemplo */}
+          <div className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 rounded-xl flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <RotateCcw className="w-4 h-4 text-violet-600" /> Carregar Dados de Exemplo
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Preenche o sistema com o cenário de demonstração para testes rápidos
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleLoadDemo}
+              className="px-3.5 py-1.5 text-xs font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition"
+            >
+              Carregar Mock
+            </button>
           </div>
         </div>
 
