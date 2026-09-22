@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 async function getPluggyApiKey(): Promise<string | null> {
-  const clientId = process.env.PLUGGY_CLIENT_ID;
+  const clientId = process.env.PLUGGY_CLIENT_ID || process.env.ID_DO_CLIENTE_PLUGGY;
   const clientSecret = process.env.PLUGGY_CLIENT_SECRET;
 
   if (clientId && clientSecret) {
@@ -22,7 +22,7 @@ async function getPluggyApiKey(): Promise<string | null> {
   }
 
   // Fallback para API Key direta se configurada
-  return process.env.PLUGGY_API_KEY || null;
+  return process.env.PLUGGY_API_KEY || process.env.CHAVE_API_PLUGGY || null;
 }
 
 export async function GET(request: Request) {
@@ -36,10 +36,13 @@ export async function GET(request: Request) {
   }
 
   const apiKey = await getPluggyApiKey();
+  const hasClientId = Boolean(process.env.PLUGGY_CLIENT_ID || process.env.ID_DO_CLIENTE_PLUGGY);
+  const hasClientSecret = Boolean(process.env.PLUGGY_CLIENT_SECRET);
+
   return NextResponse.json({
     configured: Boolean(apiKey),
     provider: "Pluggy Open Finance",
-    hasCredentials: Boolean(process.env.PLUGGY_CLIENT_ID && process.env.PLUGGY_CLIENT_SECRET),
+    hasCredentials: Boolean(hasClientId && hasClientSecret),
     security: {
       rateLimiting: "ativo",
       encryption: "TLS 1.3",
