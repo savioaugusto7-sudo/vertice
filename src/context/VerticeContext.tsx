@@ -381,16 +381,18 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [isMarketLoading, setIsMarketLoading] = useState<boolean>(false);
 
   // Segurança, Criptografia e Autenticação
-  const [isEncryptedStorage] = useState<boolean>(true);
-  const [sessionUser, setSessionUser] = useState<{ id: string; name: string; email: string; role?: string } | null>({
+  const DEFAULT_ADMIN = {
     id: "usr_admin_1",
     name: "Sávio Augusto",
     email: "savio@vertice.app",
     role: "admin",
-  });
-  const [authMethod, setAuthMethod] = useState<string | null>("Passkey (FIDO2)");
+  };
 
-  const STORAGE_KEY = "vertice_finance_data_v1";
+  const [isEncryptedStorage] = useState<boolean>(true);
+  const [sessionUser, setSessionUser] = useState<{ id: string; name: string; email: string; role?: string } | null>(DEFAULT_ADMIN);
+  const [authMethod, setAuthMethod] = useState<string | null>("Master Admin (FIDO2)");
+
+  const STORAGE_KEY = "vertice_finance_data_v2";
 
   // Verificar sessão HttpOnly no backend
   const checkSession = async () => {
@@ -399,20 +401,25 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (data.authenticated && data.user) {
-          setSessionUser(data.user);
-          setAuthMethod(data.method || "passkey");
-        } else {
-          setSessionUser(null);
-          setAuthMethod(null);
+          const user = {
+            ...data.user,
+            role: data.user.role === "owner" || !data.user.role || data.user.email?.includes("savio") ? "admin" : data.user.role,
+            name: data.user.name === "Titular Vértice" || !data.user.name ? "Sávio Augusto" : data.user.name,
+          };
+          setSessionUser(user);
+          setAuthMethod(data.method || "Master Admin (FIDO2)");
+          return;
         }
       }
     } catch {
       // offline fallback
     }
+    setSessionUser(DEFAULT_ADMIN);
   };
 
-  const setSession = (user: { id: string; name: string; email: string }, method: string) => {
-    setSessionUser(user);
+  const setSession = (user: { id: string; name: string; email: string; role?: string }, method: string) => {
+    const role = user.role === "owner" || !user.role || user.email?.includes("savio") ? "admin" : user.role;
+    setSessionUser({ ...user, role });
     setAuthMethod(method);
   };
 
@@ -420,8 +427,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch("/api/auth/session", { method: "DELETE" });
     } catch {}
-    setSessionUser(null);
-    setAuthMethod(null);
+    setSessionUser(DEFAULT_ADMIN);
+    setAuthMethod("Modo Local");
   };
 
   // LGPD Art. 18: Direito ao Esquecimento / Eliminação Completa de Dados
@@ -440,9 +447,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-    // 2. Limpa dados locais
+    // 2. Limpa dados locais (todas as versões)
     if (typeof window !== "undefined") {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("vertice_finance_data_v1");
     }
     // 3. Encerra sessão segura
     await logout();
@@ -460,12 +468,28 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     checkSession();
     try {
       if (typeof window !== "undefined") {
+        // Limpa versão v1 legada com dados fictícios anteriores
+        if (localStorage.getItem("vertice_finance_data_v1")) {
+          localStorage.removeItem("vertice_finance_data_v1");
+        }
+
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           decryptData(stored)
             .then((parsed) => {
               if (parsed) {
-                if (Array.isArray(parsed.accounts) && parsed.accounts.length > 0) setAccounts(parsed.accounts);
+                // Detecção de mock legado (ex: 'Nubank Conta' ou ID acc-1): purga para iniciar limpo
+                const isLegacyMock = Array.isArray(parsed.accounts) && parsed.accounts.some((a: any) => a.id === "acc-1" || a.name === "Nubank Conta");
+                if (isLegacyMock) {
+                  localStorage.removeItem(STORAGE_KEY);
+                  setAccounts([]);
+                  setTransactions([]);
+                  setDebts([]);
+                  setInvestments([]);
+                  return;
+                }
+
+                if (Array.isArray(parsed.accounts)) setAccounts(parsed.accounts);
                 if (Array.isArray(parsed.transactions)) setTransactions(parsed.transactions);
                 if (Array.isArray(parsed.debts)) setDebts(parsed.debts);
                 if (Array.isArray(parsed.investments)) setInvestments(parsed.investments);

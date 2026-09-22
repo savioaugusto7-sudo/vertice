@@ -165,7 +165,7 @@ export function Sidebar({ isOpenMobile, setIsOpenMobile }: SidebarProps) {
                 {sessionUser ? sessionUser.name : "Sávio Augusto"}
               </p>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold uppercase tracking-wider">
-                {sessionUser?.role === "admin" ? "Admin" : "Titular"}
+                {sessionUser?.role === "user" ? "Usuário" : "Admin"}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 truncate mt-0.5">

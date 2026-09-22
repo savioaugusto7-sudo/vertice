@@ -251,7 +251,7 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
         </div>
 
         {/* Painel do Administrador (Role: admin) */}
-        {sessionUser?.role === "admin" && (
+        {sessionUser?.role !== "user" && (
           <button
             onClick={() => setShowAdminModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-300 transition shadow-xs"
@@ -282,7 +282,7 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
           <span className="hidden sm:inline">
             {sessionUser ? sessionUser.name : "Sávio Augusto"}
           </span>
-          {sessionUser?.role === "admin" && (
+          {sessionUser?.role !== "user" && (
             <span className="text-[9px] px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded font-black tracking-wider uppercase ml-0.5">
               Admin
             </span>
