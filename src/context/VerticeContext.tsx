@@ -335,6 +335,8 @@ interface FinanceContextType {
   setSession: (user: { id: string; name: string; email: string; role?: string }, method: string) => void;
   logout: () => Promise<void>;
 
+  showAdminModal: boolean;
+  setShowAdminModal: (open: boolean) => void;
   // Navegação
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
@@ -370,6 +372,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
 
   // Mercado & Indicadores (Fase 2)
   const [economicIndicators, setEconomicIndicators] = useState<EconomicIndicators | null>({
@@ -1067,6 +1070,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         checkSession,
         setSession,
         logout,
+        showAdminModal,
+        setShowAdminModal,
       }}
     >
       {children}

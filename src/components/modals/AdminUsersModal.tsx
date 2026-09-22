@@ -30,6 +30,7 @@ export function AdminUsersModal({ isOpen, onClose }: AdminUsersModalProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("vertice123");
   const [role, setRole] = useState<"admin" | "user">("user");
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
@@ -68,13 +69,14 @@ export function AdminUsersModal({ isOpen, onClose }: AdminUsersModalProps) {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, role }),
+        body: JSON.stringify({ name, email, role, password }),
       });
       const data = await res.json();
       if (res.ok) {
-        setFeedbackMsg(`Convite enviado para ${name} com sucesso!`);
+        setFeedbackMsg(`Usuário ${name} cadastrado com sucesso! Senha inicial: "${password}"`);
         setName("");
         setEmail("");
+        setPassword("vertice123");
         setShowAddForm(false);
         fetchUsers();
       } else {
@@ -218,7 +220,7 @@ export function AdminUsersModal({ isOpen, onClose }: AdminUsersModalProps) {
               className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 animate-in fade-in"
             >
               <p className="text-xs font-bold text-slate-900">Convidar Novo Usuário para o Sistema</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">Nome Completo</label>
                   <input
@@ -242,7 +244,18 @@ export function AdminUsersModal({ isOpen, onClose }: AdminUsersModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Papel / Nível de Acesso</label>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Senha Inicial</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Mínimo 6 dígitos"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Papel / Acesso</label>
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as any)}
@@ -253,13 +266,16 @@ export function AdminUsersModal({ isOpen, onClose }: AdminUsersModalProps) {
                   </select>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 pt-1">
+              <div className="flex items-center justify-between pt-1">
+                <p className="text-[11px] text-slate-400">
+                  O usuário cadastrado poderá fazer login imediatamente com este e-mail e senha.
+                </p>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
                 >
-                  {submitting ? "Cadastrando..." : "Enviar Convite"}
+                  {submitting ? "Cadastrando..." : "Cadastrar Usuário"}
                 </button>
               </div>
             </form>

@@ -118,6 +118,45 @@ export function saveWebauthnChallenge(sessionKey: string, challenge: string): vo
   });
 }
 
+export function createStoredUser(params: {
+  name: string;
+  email: string;
+  role: "admin" | "user";
+  password?: string;
+}): StoredUser {
+  const emailNorm = params.email.trim().toLowerCase();
+  const rawPassword = params.password || "vertice123";
+  const { hash, salt } = hashPassword(rawPassword);
+
+  const newUser: StoredUser = {
+    id: `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name: params.name.trim(),
+    email: emailNorm,
+    role: params.role,
+    passwordHash: hash,
+    salt,
+    webauthnCredentials: [],
+    createdAt: new Date().toISOString(),
+    failedAttempts: 0,
+  };
+
+  usersDatabase.push(newUser);
+  return newUser;
+}
+
+export function deleteStoredUser(id: string): boolean {
+  const initialLen = usersDatabase.length;
+  usersDatabase = usersDatabase.filter((u) => u.id !== id);
+  return usersDatabase.length < initialLen;
+}
+
+export function updateStoredUser(id: string, patch: Partial<StoredUser>): boolean {
+  const user = findUserById(id);
+  if (!user) return false;
+  Object.assign(user, patch);
+  return true;
+}
+
 export function getWebauthnChallenge(sessionKey: string): string | null {
   const item = webauthnChallenges.get(sessionKey);
   if (!item) return null;

@@ -8,6 +8,7 @@ import {
   Bell,
   TrendingDown,
   TrendingUp,
+  Users,
 } from "lucide-react";
 import { useFinance, TabType } from "@/context/VerticeContext";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpenMobile, setIsOpenMobile }: SidebarProps) {
-  const { activeTab, setActiveTab, alerts, debts, sessionUser } = useFinance();
+  const { activeTab, setActiveTab, alerts, debts, sessionUser, setShowAdminModal } = useFinance();
 
   const activeAlerts = alerts.filter((a) => !a.isDismissed).length;
   const criticalAlerts = alerts.filter(
@@ -154,6 +155,25 @@ export function Sidebar({ isOpenMobile, setIsOpenMobile }: SidebarProps) {
                 </li>
               );
             })}
+
+            {/* Gestão de Usuários (Visível para Admin) */}
+            {sessionUser?.role !== "user" && (
+              <li className="pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    setShowAdminModal(true);
+                    setIsOpenMobile(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 transition-all duration-150 group shadow-xs"
+                >
+                  <Users className="w-4 h-4 shrink-0 text-amber-600" />
+                  <span className="flex-1 text-left">Gestão de Usuários</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-black uppercase tracking-wider">
+                    Admin
+                  </span>
+                </button>
+              </li>
+            )}
           </ul>
         </nav>
 

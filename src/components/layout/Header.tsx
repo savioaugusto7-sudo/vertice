@@ -56,6 +56,8 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
     isMarketLoading,
     sessionUser,
     authMethod,
+    showAdminModal,
+    setShowAdminModal,
   } = useFinance();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -64,7 +66,6 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
-  const [showAdminModal, setShowAdminModal] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {

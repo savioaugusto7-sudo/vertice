@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import {
+  getStoredUsers,
+  createStoredUser,
+  findUserByEmail,
+  findUserById,
+  deleteStoredUser,
+  updateStoredUser,
+  StoredUser,
+} from "@/lib/authStore";
 
 export interface SystemUser {
   id: string;
@@ -12,29 +21,21 @@ export interface SystemUser {
   lastLogin: string;
 }
 
-// Armazenamento inicial de usuários do sistema
-let systemUsers: SystemUser[] = [
-  {
-    id: "usr_admin_1",
-    name: "Sávio Augusto",
-    email: "savio@vertice.app",
-    role: "admin",
-    status: "ativo",
-    authMethod: "Passkey (FIDO2)",
-    createdAt: "2026-09-01T10:00:00Z",
-    lastLogin: new Date().toISOString(),
-  },
-  {
-    id: "usr_finance_2",
-    name: "Consultor Financeiro",
-    email: "consultoria@vertice.app",
-    role: "user",
-    status: "ativo",
-    authMethod: "Magic Link + 2FA",
-    createdAt: "2026-09-15T14:30:00Z",
-    lastLogin: "2026-09-20T18:45:00Z",
-  },
-];
+function mapStoredToSystemUser(u: StoredUser): SystemUser {
+  const isLocked = u.lockedUntil && Date.now() < u.lockedUntil;
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    status: isLocked ? "bloqueado" : "ativo",
+    authMethod: u.webauthnCredentials && u.webauthnCredentials.length > 0
+      ? "Windows Hello (FIDO2)"
+      : "Senha Mestre (PBKDF2)",
+    createdAt: u.createdAt,
+    lastLogin: u.lastLogin || "Nunca acessou",
+  };
+}
 
 export async function GET(request: Request) {
   const ip = getClientIp(request);
@@ -43,12 +44,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Limite de requisições excedido" }, { status: 429 });
   }
 
+  const stored = getStoredUsers();
+  const users = stored.map(mapStoredToSystemUser);
+
   return NextResponse.json({
     success: true,
-    users: systemUsers,
-    total: systemUsers.length,
-    activeCount: systemUsers.filter((u) => u.status === "ativo").length,
-    adminCount: systemUsers.filter((u) => u.role === "admin").length,
+    users,
+    total: users.length,
+    activeCount: users.filter((u) => u.status === "ativo").length,
+    adminCount: users.filter((u) => u.role === "admin").length,
   });
 }
 
@@ -61,16 +65,17 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => ({}));
-    const { name, email, role } = body;
+    const { name, email, role, password } = body;
 
     if (!name || !email) {
       return NextResponse.json(
-        { error: "Nome e e-mail são obrigatórios para convidar um usuário" },
+        { error: "Nome e e-mail são obrigatórios para cadastrar um usuário" },
         { status: 400 }
       );
     }
 
-    const existing = systemUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const emailNorm = String(email).trim().toLowerCase();
+    const existing = findUserByEmail(emailNorm);
     if (existing) {
       return NextResponse.json(
         { error: "Já existe um usuário cadastrado com este e-mail" },
@@ -78,23 +83,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const newUser: SystemUser = {
-      id: `usr_${Date.now()}`,
-      name: String(name).trim(),
-      email: String(email).trim().toLowerCase(),
-      role: role === "admin" ? "admin" : "user",
-      status: "ativo",
-      authMethod: "Pendente (Convite Enviado)",
-      createdAt: new Date().toISOString(),
-      lastLogin: "Nunca acessou",
-    };
+    const rawPassword = password && String(password).length >= 6 ? String(password) : "vertice123";
 
-    systemUsers.push(newUser);
+    const newUser = createStoredUser({
+      name: String(name).trim(),
+      email: emailNorm,
+      role: role === "admin" ? "admin" : "user",
+      password: rawPassword,
+    });
+
+    const systemUser = mapStoredToSystemUser(newUser);
 
     return NextResponse.json({
       success: true,
-      user: newUser,
-      message: `Usuário ${newUser.name} cadastrado com sucesso.`,
+      user: systemUser,
+      initialPassword: rawPassword,
+      message: `Usuário ${newUser.name} cadastrado com sucesso com senha de acesso.`,
     });
   } catch (err) {
     return NextResponse.json(
@@ -109,12 +113,11 @@ export async function PATCH(request: Request) {
     const body = await request.json().catch(() => ({}));
     const { id, role, status } = body;
 
-    const user = systemUsers.find((u) => u.id === id);
+    const user = findUserById(id);
     if (!user) {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    // Não permitir bloquear o próprio admin principal
     if (user.id === "usr_admin_1" && status === "bloqueado") {
       return NextResponse.json(
         { error: "Não é permitido bloquear a conta do administrador principal" },
@@ -126,13 +129,18 @@ export async function PATCH(request: Request) {
       user.role = role;
     }
 
-    if (status && (status === "ativo" || status === "bloqueado")) {
-      user.status = status;
+    if (status === "bloqueado") {
+      user.lockedUntil = Date.now() + 24 * 60 * 60 * 1000;
+    } else if (status === "ativo") {
+      user.lockedUntil = undefined;
+      user.failedAttempts = 0;
     }
+
+    const updated = mapStoredToSystemUser(user);
 
     return NextResponse.json({
       success: true,
-      user,
+      user: updated,
       message: "Usuário atualizado com sucesso.",
     });
   } catch (err) {
@@ -156,16 +164,16 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const index = systemUsers.findIndex((u) => u.id === id);
-    if (index === -1) {
+    const user = findUserById(id);
+    if (!user) {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    const deletedUser = systemUsers.splice(index, 1)[0];
+    deleteStoredUser(id);
 
     return NextResponse.json({
       success: true,
-      message: `Usuário ${deletedUser.name} excluído do sistema em conformidade com a LGPD.`,
+      message: `Usuário ${user.name} excluído do sistema em conformidade com a LGPD.`,
     });
   } catch (err) {
     return NextResponse.json({ error: "Erro ao excluir usuário", details: String(err) }, { status: 500 });
