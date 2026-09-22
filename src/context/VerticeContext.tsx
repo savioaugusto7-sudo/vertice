@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
+import { encryptData, decryptData } from "@/lib/crypto";
 import {
   Account,
   Transaction,
@@ -322,6 +323,15 @@ interface FinanceContextType {
   last6MonthsSummary: MonthlySummary[];
   reservaEmergencia: { current: number; target: number; targetMonths: number; percent: number };
 
+  // Segurança & LGPD
+  isEncryptedStorage: boolean;
+  purgeAllUserData: () => Promise<void>;
+  sessionUser: { id: string; name: string; email: string; role?: string } | null;
+  authMethod: string | null;
+  checkSession: () => Promise<void>;
+  setSession: (user: { id: string; name: string; email: string }, method: string) => void;
+  logout: () => Promise<void>;
+
   // Navegação
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
@@ -367,37 +377,113 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [marketQuotes, setMarketQuotes] = useState<MarketQuote[]>([]);
   const [isMarketLoading, setIsMarketLoading] = useState<boolean>(false);
 
+  // Segurança, Criptografia e Autenticação
+  const [isEncryptedStorage] = useState<boolean>(true);
+  const [sessionUser, setSessionUser] = useState<{ id: string; name: string; email: string; role?: string } | null>(null);
+  const [authMethod, setAuthMethod] = useState<string | null>(null);
+
   const STORAGE_KEY = "vertice_finance_data_v1";
 
-  // Hidratação LocalStorage (SSR safe)
+  // Verificar sessão HttpOnly no backend
+  const checkSession = async () => {
+    try {
+      const res = await fetch("/api/auth/session");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && data.user) {
+          setSessionUser(data.user);
+          setAuthMethod(data.method || "passkey");
+        } else {
+          setSessionUser(null);
+          setAuthMethod(null);
+        }
+      }
+    } catch {
+      // offline fallback
+    }
+  };
+
+  const setSession = (user: { id: string; name: string; email: string }, method: string) => {
+    setSessionUser(user);
+    setAuthMethod(method);
+  };
+
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/session", { method: "DELETE" });
+    } catch {}
+    setSessionUser(null);
+    setAuthMethod(null);
+  };
+
+  // LGPD Art. 18: Direito ao Esquecimento / Eliminação Completa de Dados
+  const purgeAllUserData = async () => {
+    // 1. Revoga na Pluggy quaisquer conexões ativas
+    for (const acc of accounts) {
+      if (acc.pluggyItemId) {
+        try {
+          await fetch("/api/pluggy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "delete_item", itemId: acc.pluggyItemId }),
+          });
+        } catch (e) {
+          console.warn("Falha ao revogar item Pluggy:", e);
+        }
+      }
+    }
+    // 2. Limpa dados locais
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    // 3. Encerra sessão segura
+    await logout();
+    // 4. Zera o estado da aplicação
+    setAccounts([]);
+    setTransactions([]);
+    setDebts([]);
+    setInvestments([]);
+    setBudgets([]);
+    setAutoRules([]);
+  };
+
+  // Hidratação LocalStorage com Criptografia Zero-Knowledge
   useEffect(() => {
+    checkSession();
     try {
       if (typeof window !== "undefined") {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed.accounts) && parsed.accounts.length > 0) setAccounts(parsed.accounts);
-          if (Array.isArray(parsed.transactions)) setTransactions(parsed.transactions);
-          if (Array.isArray(parsed.debts)) setDebts(parsed.debts);
-          if (Array.isArray(parsed.investments)) setInvestments(parsed.investments);
-          if (Array.isArray(parsed.budgets)) setBudgets(parsed.budgets);
-          if (Array.isArray(parsed.autoRules)) setAutoRules(parsed.autoRules);
-          if (parsed.debtStrategy === "snowball" || parsed.debtStrategy === "avalanche") {
-            setDebtStrategy(parsed.debtStrategy);
-          }
-          if (typeof parsed.debtExtraMonthly === "number") {
-            setDebtExtraMonthly(parsed.debtExtraMonthly);
-          }
+          decryptData(stored)
+            .then((parsed) => {
+              if (parsed) {
+                if (Array.isArray(parsed.accounts) && parsed.accounts.length > 0) setAccounts(parsed.accounts);
+                if (Array.isArray(parsed.transactions)) setTransactions(parsed.transactions);
+                if (Array.isArray(parsed.debts)) setDebts(parsed.debts);
+                if (Array.isArray(parsed.investments)) setInvestments(parsed.investments);
+                if (Array.isArray(parsed.budgets)) setBudgets(parsed.budgets);
+                if (Array.isArray(parsed.autoRules)) setAutoRules(parsed.autoRules);
+                if (parsed.debtStrategy === "snowball" || parsed.debtStrategy === "avalanche") {
+                  setDebtStrategy(parsed.debtStrategy);
+                }
+                if (typeof parsed.debtExtraMonthly === "number") {
+                  setDebtExtraMonthly(parsed.debtExtraMonthly);
+                }
+              }
+            })
+            .catch((e) => console.warn("Erro ao decifrar dados locais:", e))
+            .finally(() => setIsLoaded(true));
+        } else {
+          setIsLoaded(true);
         }
       }
     } catch (e) {
       console.warn("Aviso ao recuperar dados do localStorage:", e);
-    } finally {
       setIsLoaded(true);
     }
   }, []);
 
-  // Salvamento contínuo em LocalStorage
+  // Salvamento contínuo em LocalStorage com Cifragem AES-256-GCM
   useEffect(() => {
     if (!isLoaded) return;
     try {
@@ -413,10 +499,12 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           debtExtraMonthly,
           updatedAt: new Date().toISOString(),
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        encryptData(payload).then((encrypted) => {
+          localStorage.setItem(STORAGE_KEY, encrypted);
+        });
       }
     } catch (e) {
-      console.warn("Aviso ao gravar no localStorage:", e);
+      console.warn("Aviso ao gravar no localStorage cifrado:", e);
     }
   }, [
     isLoaded,
@@ -915,6 +1003,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         marketQuotes,
         syncMarketData,
         isMarketLoading,
+        isEncryptedStorage,
+        purgeAllUserData,
+        sessionUser,
+        authMethod,
+        checkSession,
+        setSession,
+        logout,
       }}
     >
       {children}

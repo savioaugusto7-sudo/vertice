@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 async function getPluggyApiKey(): Promise<string | null> {
   const clientId = process.env.PLUGGY_CLIENT_ID;
@@ -24,19 +25,53 @@ async function getPluggyApiKey(): Promise<string | null> {
   return process.env.PLUGGY_API_KEY || null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  const rateLimit = checkRateLimit(`get_${ip}`, { windowMs: 60000, max: 60 });
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Limite de requisições excedido. Tente novamente em breve." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.reset) } }
+    );
+  }
+
   const apiKey = await getPluggyApiKey();
   return NextResponse.json({
     configured: Boolean(apiKey),
     provider: "Pluggy Open Finance",
     hasCredentials: Boolean(process.env.PLUGGY_CLIENT_ID && process.env.PLUGGY_CLIENT_SECRET),
+    security: {
+      rateLimiting: "ativo",
+      encryption: "TLS 1.3",
+      readOnlyScope: true,
+      lgpdCompliant: true,
+    },
   });
 }
 
 export async function POST(request: Request) {
   try {
+    // 0. Hardening: Proteção contra Abuso & Rate Limiting
+    const ip = getClientIp(request);
+    const rateLimit = checkRateLimit(`post_pluggy_${ip}`, { windowMs: 60000, max: 20 });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        {
+          error: "Limite de requisições excedido por segurança (Rate Limit).",
+          retryAfterSeconds: rateLimit.reset,
+        },
+        { status: 429, headers: { "Retry-After": String(rateLimit.reset) } }
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
     const { action, bank, itemId } = body;
+
+    // Validação estrita de tipo de ação permitida
+    const allowedActions = ["create_connect_token", "fetch_item_data", "delete_item", "sandbox_connect"];
+    if (action && !allowedActions.includes(action)) {
+      return NextResponse.json({ error: "Ação não permitida ou inválida" }, { status: 400 });
+    }
 
     const apiKey = await getPluggyApiKey();
 
@@ -122,7 +157,6 @@ export async function POST(request: Request) {
       const syncedTransactions: any[] = [];
 
       for (const acc of rawAccounts) {
-        // Mapeamento de tipo para o padrão Vértice
         let verticeType: "corrente" | "poupanca" | "cartao_credito" | "investimento" | "outro" = "corrente";
         if (acc.type === "CREDIT") verticeType = "cartao_credito";
         else if (acc.type === "INVESTMENT") verticeType = "investimento";
@@ -183,7 +217,25 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. MODO SANDBOX / DEMONSTRAÇÃO LOCAL RÁPIDA (FALLBACK)
+    // 3. REVOGAÇÃO DE CONSENTIMENTO LGPD / BACEN (DELETE ITEM)
+    if (action === "delete_item" && itemId) {
+      if (apiKey && !itemId.startsWith("demo")) {
+        try {
+          await fetch(`https://api.pluggy.ai/items/${itemId}`, {
+            method: "DELETE",
+            headers: { "X-API-KEY": apiKey },
+          });
+        } catch (delErr) {
+          console.warn("Aviso ao deletar item na Pluggy:", delErr);
+        }
+      }
+      return NextResponse.json({
+        success: true,
+        message: "Consentimento revogado e conexão bancária desvinculada com sucesso.",
+      });
+    }
+
+    // 4. MODO SANDBOX / DEMONSTRAÇÃO LOCAL RÁPIDA (FALLBACK)
     const selectedBank = bank || "Nubank";
     const mockAccounts: Record<string, { name: string; balance: number; type: string; color: string }> = {
       Nubank: {

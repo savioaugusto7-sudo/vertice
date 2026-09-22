@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { Menu, Bell, RefreshCw, ChevronLeft, ChevronRight, Plus, ShieldCheck, Database } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Menu, Bell, RefreshCw, ChevronLeft, ChevronRight, Plus, ShieldCheck, Database, Shield, KeyRound, Lock } from "lucide-react";
 import { useFinance } from "@/context/VerticeContext";
 import { cn, formatCurrency } from "@/lib/utils";
 import { TransactionModal } from "@/components/modals/TransactionModal";
 import { BackupModal } from "@/components/modals/BackupModal";
+import { PrivacySettingsModal } from "@/components/modals/PrivacySettingsModal";
+import { AuthModal } from "@/components/modals/AuthModal";
+import { LGPDConsentModal } from "@/components/modals/LGPDConsentModal";
 
 interface HeaderProps {
   setIsOpenMobile: (open: boolean) => void;
@@ -50,11 +53,25 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
     setSelectedMonth,
     syncMarketData,
     isMarketLoading,
+    sessionUser,
+    authMethod,
   } = useFinance();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showTxModal, setShowTxModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const consent = localStorage.getItem("vertice_lgpd_consent_v1");
+      if (!consent) {
+        setShowConsentModal(true);
+      }
+    }
+  }, []);
 
   const activeAlerts = alerts.filter((a) => !a.isDismissed);
   const criticalCount = activeAlerts.filter((a) => a.severity === "critico").length;
@@ -231,10 +248,32 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
           )}
         </div>
 
+        {/* Central de Privacidade & LGPD Button */}
+        <button
+          onClick={() => setShowPrivacyModal(true)}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold border border-violet-200 transition"
+          title="Central de Privacidade & LGPD (Art. 18)"
+        >
+          <Shield className="w-3.5 h-3.5 text-violet-600" />
+          <span className="hidden md:inline">LGPD & Privacidade</span>
+        </button>
+
+        {/* Login Seguro / Passkeys Button */}
+        <button
+          onClick={() => setShowAuthModal(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs border border-slate-700"
+          title="Login Seguro (Passkeys / FIDO2 / 2FA)"
+        >
+          <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="hidden sm:inline">
+            {sessionUser ? sessionUser.name : "Entrar com Biometria"}
+          </span>
+        </button>
+
         {/* Backup / Dados Button */}
         <button
           onClick={() => setShowBackupModal(true)}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
+          className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
           title="Backup e Gerenciamento de Dados"
         >
           <Database className="w-3.5 h-3.5 text-slate-600" />
@@ -250,10 +289,13 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
           <span className="hidden md:inline">Nova Transação</span>
         </button>
 
-        {/* Sync indicator */}
-        <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          <span className="text-xs font-bold text-emerald-700">Salvo Local</span>
+        {/* Criptografia Zero-Knowledge Badge */}
+        <div
+          className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200"
+          title="Criptografia AES-256-GCM Zero-Knowledge ativa no armazenamento local"
+        >
+          <Lock className="w-3.5 h-3.5 text-emerald-600" />
+          <span className="text-xs font-bold text-emerald-700">AES-256 Ativo</span>
         </div>
       </div>
 
@@ -265,6 +307,19 @@ export function Header({ setIsOpenMobile }: HeaderProps) {
       <BackupModal
         isOpen={showBackupModal}
         onClose={() => setShowBackupModal(false)}
+      />
+      <PrivacySettingsModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
+      <LGPDConsentModal
+        isOpen={showConsentModal}
+        onAccept={() => setShowConsentModal(false)}
+        onClose={() => setShowConsentModal(false)}
       />
     </header>
   );

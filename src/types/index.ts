@@ -23,6 +23,8 @@ export interface Account {
   lastSync?: string; // ISO timestamp
   dueDate?: number; // Para cartão: dia de vencimento da fatura (1-31)
   closingDate?: number; // Para cartão: dia do fechamento da fatura (1-31)
+  pluggyItemId?: string; // ID do Item Pluggy conectado
+  pluggyAccountId?: string; // ID da Conta na Pluggy
 }
 
 // ─── Transações ──────────────────────────────────────────────────────────────
