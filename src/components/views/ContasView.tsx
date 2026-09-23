@@ -46,7 +46,6 @@ export function ContasView() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPluggyModal, setShowPluggyModal] = useState(false);
   const [targetAccountId, setTargetAccountId] = useState<string>("");
-  const [isConnectingOpenFinance, setIsConnectingOpenFinance] = useState(false);
   const [openFinanceMsg, setOpenFinanceMsg] = useState<string | null>(null);
 
   // Totais
@@ -62,36 +61,6 @@ export function ContasView() {
     acc[t.accountId] = (acc[t.accountId] || 0) + 1;
     return acc;
   }, {});
-
-  const handleOpenFinanceConnect = async (bankName: string) => {
-    setIsConnectingOpenFinance(true);
-    setOpenFinanceMsg(null);
-    try {
-      const res = await fetch("/api/pluggy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bank: bankName }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.account) {
-          addAccount(data.account);
-          if (Array.isArray(data.sampleTransactions)) {
-            const txsWithAccount = data.sampleTransactions.map((st: any) => ({
-              ...st,
-              accountId: data.account.id,
-            }));
-            addTransactions(txsWithAccount);
-          }
-          setOpenFinanceMsg(`Conectado com sucesso ao ${bankName}! Conta e transações sincronizadas.`);
-        }
-      }
-    } catch {
-      setOpenFinanceMsg(`Erro ao sincronizar com ${bankName}.`);
-    } finally {
-      setIsConnectingOpenFinance(false);
-    }
-  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -120,24 +89,36 @@ export function ContasView() {
         </div>
       </div>
 
-      {/* Banner Open Finance (Fase 2) */}
-      <div className="p-5 bg-gradient-to-r from-violet-900 via-indigo-900 to-slate-900 text-white rounded-2xl shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm">
+      {/* Banner Open Finance Oficial */}
+      <div className="p-5 bg-gradient-to-r from-violet-900 via-indigo-900 to-slate-900 text-white rounded-2xl shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10">
               <Globe className="w-6 h-6 text-violet-300" />
             </div>
             <div>
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                Conexão Open Finance (Pluggy / Sandbox)
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-                  Pronto para uso
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white">Sincronização Bancária Open Finance</h3>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Homologado BACEN
                 </span>
-              </h3>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Conecte seu banco real com credenciais Pluggy ou simule a sincronização instantânea em 1 clique
+              </div>
+              <p className="text-xs text-slate-300 mt-1 max-w-xl">
+                Conecte suas contas e cartões reais via Pluggy. Seus saldos, extratos e faturas são importados e atualizados automaticamente com segurança de grau bancário.
               </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowPluggyModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 active:scale-95 text-xs font-bold text-white transition border border-violet-400/40 shadow-sm flex items-center gap-2"
+            >
+              <Globe className="w-4 h-4 text-emerald-300" />
+              <span>Conectar Instituição Financeira</span>
+            </button>
           </div>
         </div>
 
@@ -147,30 +128,6 @@ export function ContasView() {
             <span>{openFinanceMsg}</span>
           </div>
         )}
-
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => setShowPluggyModal(true)}
-            className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 active:scale-95 text-xs font-bold text-white transition border border-violet-400/40 shadow-sm flex items-center gap-2"
-          >
-            <Globe className="w-4 h-4 text-emerald-300" />
-            <span>Conectar Banco Real (Pluggy Widget)</span>
-          </button>
-          <span className="text-xs text-slate-400 font-medium ml-2">Simulação Sandbox rápida:</span>
-          {["Nubank", "Banco Inter", "Itaú", "Bradesco"].map((bank) => (
-            <button
-              key={bank}
-              type="button"
-              disabled={isConnectingOpenFinance}
-              onClick={() => handleOpenFinanceConnect(bank)}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-semibold text-white transition border border-white/10 flex items-center gap-1.5 disabled:opacity-50"
-            >
-              <Sparkles className="w-3 h-3 text-amber-300" />
-              <span>{bank}</span>
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Resumo */}

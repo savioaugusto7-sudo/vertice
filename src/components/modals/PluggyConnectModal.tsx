@@ -184,7 +184,7 @@ export function PluggyConnectModal({
               <div className="w-full flex justify-center">
                 <DynamicPluggyConnect
                   connectToken={token}
-                  includeSandbox={true}
+                  includeSandbox={false}
                   onSuccess={handleSuccess}
                   onError={(err) => {
                     console.error("Pluggy Connect erro:", err);

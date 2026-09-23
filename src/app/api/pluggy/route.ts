@@ -68,11 +68,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { action, bank, itemId } = body;
+    const { action, itemId } = body;
 
-    // Validação estrita de tipo de ação permitida
-    const allowedActions = ["create_connect_token", "fetch_item_data", "delete_item", "sandbox_connect"];
-    if (action && !allowedActions.includes(action)) {
+    // Validação estrita de tipo de ação permitida em produção
+    const allowedActions = ["create_connect_token", "fetch_item_data", "delete_item"];
+    if (!action || !allowedActions.includes(action)) {
       return NextResponse.json({ error: "Ação não permitida ou inválida" }, { status: 400 });
     }
 
@@ -238,78 +238,10 @@ export async function POST(request: Request) {
       });
     }
 
-    // 4. MODO SANDBOX / DEMONSTRAÇÃO LOCAL RÁPIDA (FALLBACK)
-    const selectedBank = bank || "Nubank";
-    const mockAccounts: Record<string, { name: string; balance: number; type: string; color: string }> = {
-      Nubank: {
-        name: "Nubank Open Finance",
-        balance: 4180.5,
-        type: "corrente",
-        color: "#8b5cf6",
-      },
-      "Banco Inter": {
-        name: "Inter Conta Digital",
-        balance: 2350.0,
-        type: "corrente",
-        color: "#f97316",
-      },
-      Itaú: {
-        name: "Itaú Uniclass",
-        balance: 6290.75,
-        type: "corrente",
-        color: "#003d7a",
-      },
-      Bradesco: {
-        name: "Bradesco Prime",
-        balance: 1840.2,
-        type: "corrente",
-        color: "#cc0000",
-      },
-    };
-
-    const targetAccount = mockAccounts[selectedBank] || mockAccounts["Nubank"];
-    const now = new Date();
-    const isoToday = now.toISOString().split("T")[0];
-
-    return NextResponse.json({
-      mode: "sandbox",
-      status: "connected",
-      message: `Conexão Open Finance (Sandbox) com ${selectedBank} sincronizada com sucesso!`,
-      account: {
-        id: `acc-open-${Date.now()}`,
-        name: targetAccount.name,
-        bank: selectedBank,
-        type: targetAccount.type,
-        balance: targetAccount.balance,
-        color: targetAccount.color,
-        iconName: "Wallet",
-        status: "ativa",
-        lastSync: new Date().toISOString(),
-      },
-      sampleTransactions: [
-        {
-          date: isoToday,
-          description: `Transferência PIX Recebida - ${selectedBank}`,
-          amount: 850.0,
-          type: "receita",
-          categoryId: "cat-salario",
-        },
-        {
-          date: isoToday,
-          description: "Supermercado Pão de Açúcar",
-          amount: -214.3,
-          type: "despesa",
-          categoryId: "cat-mercado",
-        },
-        {
-          date: isoToday,
-          description: "Posto Shell Combustível",
-          amount: -150.0,
-          type: "despesa",
-          categoryId: "cat-combustivel",
-        },
-      ],
-    });
+    return NextResponse.json(
+      { error: "Ação não suportada ou parâmetros insuficientes." },
+      { status: 400 }
+    );
   } catch (error) {
     return NextResponse.json(
       { error: "Falha ao processar requisição Open Finance", details: String(error) },
