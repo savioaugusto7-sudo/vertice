@@ -164,8 +164,8 @@ export function LockScreen() {
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Top Gradient Banner */}
         <div className="px-8 pt-8 pb-5 bg-gradient-to-b from-violet-950/40 to-transparent text-center border-b border-slate-100 dark:border-slate-800/60">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white mx-auto shadow-lg shadow-violet-600/30 mb-3">
-            <Lock className="w-7 h-7" />
+          <div className="w-16 h-16 rounded-2xl bg-white p-2 flex items-center justify-center mx-auto shadow-md border border-slate-200/80 mb-3">
+            <img src="/icon-192.png" alt="Vértice" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
             Vértice Finanças

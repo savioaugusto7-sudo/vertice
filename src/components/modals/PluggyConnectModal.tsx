@@ -118,8 +118,8 @@ export function PluggyConnectModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
-              V
+            <div className="w-8 h-8 rounded-xl bg-white border border-slate-200/90 p-0.5 flex items-center justify-center shadow-xs overflow-hidden">
+              <img src="/favicon-64.png" alt="Vértice Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">

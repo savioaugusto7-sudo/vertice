@@ -100,8 +100,8 @@ export function Sidebar({ isOpenMobile, setIsOpenMobile }: SidebarProps) {
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center shadow-sm">
-              <span className="text-white font-black text-sm">V</span>
+            <div className="w-9 h-9 rounded-xl bg-white border border-slate-200/90 p-1 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+              <img src="/favicon-64.png" alt="Vértice Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-black text-slate-900 text-base tracking-tight">
