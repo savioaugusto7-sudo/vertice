@@ -275,6 +275,7 @@ interface FinanceContextType {
   addTransactions: (transactions: Omit<Transaction, "id">[]) => void;
   updateTransaction: (id: string, patch: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
+  batchCategorizeTransactions: (pattern: string, categoryId: string) => number;
 
   // Ações — Dívidas
   addDebt: (debt: Omit<Debt, "id">) => void;
@@ -925,6 +926,34 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const batchCategorizeTransactions = (pattern: string, categoryId: string): number => {
+    const trimmed = pattern.trim();
+    if (!trimmed) return 0;
+    const lower = trimmed.toLowerCase();
+
+    // Cria a regra persistente para futuras importações
+    const newRule: AutoRule = {
+      pattern: trimmed,
+      categoryId,
+      id: `rule-${Date.now()}`,
+      appliedCount: 0,
+      createdAt: new Date().toISOString().split("T")[0],
+    };
+    setAutoRules((prev) => [...prev, newRule]);
+
+    let affectedCount = 0;
+    setTransactions((prev) =>
+      prev.map((t) => {
+        if (t.description.toLowerCase().includes(lower)) {
+          affectedCount++;
+          return { ...t, categoryId, autoRuleId: newRule.id };
+        }
+        return t;
+      })
+    );
+    return affectedCount;
+  };
+
   const addDebt = (debt: Omit<Debt, "id">) => {
     setDebts((prev) => [...prev, { ...debt, id: `debt-${Date.now()}` }]);
   };
@@ -1049,6 +1078,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         addTransactions,
         updateTransaction,
         deleteTransaction,
+        batchCategorizeTransactions,
         addDebt,
         updateDebt,
         deleteDebt,
