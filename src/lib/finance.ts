@@ -298,6 +298,40 @@ export interface OFXTransaction {
   type: "DEBIT" | "CREDIT" | "OTHER";
 }
 
+export function extractOFXAccountInfo(content: string): { bank?: string; accountId?: string } {
+  const singleTagPattern = (tag: string) =>
+    new RegExp(`<${tag}>([^<\\n]+)`, "i");
+  const org = singleTagPattern("ORG").exec(content)?.[1]?.trim() || "";
+  const bankId = singleTagPattern("BANKID").exec(content)?.[1]?.trim() || "";
+  const acctId = singleTagPattern("ACCTID").exec(content)?.[1]?.trim() || "";
+
+  let detectedBank = org;
+  if (!detectedBank && bankId) {
+    if (bankId === "336" || bankId === "0336") detectedBank = "C6 Bank";
+    else if (bankId === "260" || bankId === "0260") detectedBank = "Nubank";
+    else if (bankId === "077" || bankId === "77") detectedBank = "Banco Inter";
+    else if (bankId === "341" || bankId === "0341") detectedBank = "Itaú";
+    else if (bankId === "237" || bankId === "0237") detectedBank = "Bradesco";
+    else if (bankId === "001" || bankId === "1") detectedBank = "Banco do Brasil";
+    else if (bankId === "033" || bankId === "33") detectedBank = "Santander";
+  }
+
+  if (!detectedBank) {
+    const upper = content.toUpperCase();
+    if (upper.includes("C6 BANK") || upper.includes("C6BANK")) detectedBank = "C6 Bank";
+    else if (upper.includes("NUBANK")) detectedBank = "Nubank";
+    else if (upper.includes("BANCO INTER") || upper.includes("INTER DTVM")) detectedBank = "Banco Inter";
+    else if (upper.includes("ITAU")) detectedBank = "Itaú";
+    else if (upper.includes("BRADESCO")) detectedBank = "Bradesco";
+    else if (upper.includes("SANTANDER")) detectedBank = "Santander";
+  }
+
+  return {
+    bank: detectedBank || undefined,
+    accountId: acctId || undefined,
+  };
+}
+
 export function parseOFX(content: string): OFXTransaction[] {
   const transactions: OFXTransaction[] = [];
 

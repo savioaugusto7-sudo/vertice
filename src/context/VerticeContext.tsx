@@ -266,7 +266,7 @@ interface FinanceContextType {
   categories: Category[];
 
   // Ações — Contas
-  addAccount: (account: Omit<Account, "id">) => void;
+  addAccount: (account: Omit<Account, "id"> & { id?: string }) => string;
   updateAccount: (id: string, patch: Partial<Account>) => void;
   deleteAccount: (id: string) => void;
 
@@ -811,11 +811,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Ações ────────────────────────────────────────────────────────────────
 
-  const addAccount = (account: Omit<Account, "id">) => {
+  const addAccount = (account: Omit<Account, "id"> & { id?: string }): string => {
+    const newId = account.id || `acc-${Date.now()}`;
     setAccounts((prev) => [
       ...prev,
-      { ...account, id: `acc-${Date.now()}` },
+      { ...account, id: newId },
     ]);
+    return newId;
   };
 
   const updateAccount = (id: string, patch: Partial<Account>) => {
@@ -889,6 +891,28 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       const filtered = withIds.filter(
         (t) => !t.ofxId || !existingIds.has(t.ofxId)
       );
+
+      // Atualiza saldo das contas baseado nas transações importadas
+      if (filtered.length > 0) {
+        const deltaByAccount: Record<string, number> = {};
+        for (const tx of filtered) {
+          deltaByAccount[tx.accountId] = (deltaByAccount[tx.accountId] || 0) + tx.amount;
+        }
+
+        setAccounts((prevAccounts) =>
+          prevAccounts.map((acc) => {
+            if (deltaByAccount[acc.id] !== undefined) {
+              return {
+                ...acc,
+                balance: acc.balance + deltaByAccount[acc.id],
+                lastSync: new Date().toISOString(),
+              };
+            }
+            return acc;
+          })
+        );
+      }
+
       return [...prev, ...filtered].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
